@@ -41,24 +41,10 @@ CREATE TRIGGER set_updated_at_user_roles
 -- =============================================================================
 ALTER TABLE app.profiles ENABLE ROW LEVEL SECURITY;
 
--- User darf eigenes Profil lesen + Admins dürfen Profile ihrer Org-Mitglieder lesen
-CREATE POLICY "profiles_select"
+-- User darf eigenes Profil lesen
+CREATE POLICY "profiles_select_own"
     ON app.profiles FOR SELECT
-    USING (
-        auth.uid() = id
-        OR EXISTS (
-            SELECT 1 FROM app.user_roles ur
-            WHERE ur.user_id = auth.uid()
-              AND ur.role = 'admin'
-              AND EXISTS (
-                  SELECT 1 FROM admin.organization_members om1
-                  JOIN admin.organization_members om2
-                    ON om1.organization_id = om2.organization_id
-                  WHERE om1.user_id = auth.uid()
-                    AND om2.user_id = app.profiles.id
-              )
-        )
-    );
+    USING (auth.uid() = id);
 
 CREATE POLICY "profiles_insert_own"
     ON app.profiles FOR INSERT
