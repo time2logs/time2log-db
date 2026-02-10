@@ -1,6 +1,6 @@
 CREATE SCHEMA app;
 
-CREATE TYPE app.user_role as enum ('user', 'admin');
+CREATE TYPE app.user_role AS ENUM ('user', 'admin');
 
 CREATE TABLE app.profiles (
     id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -15,10 +15,10 @@ CREATE TABLE app.user_roles (
     user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     role app.user_role NOT NULL,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
-    updated_at timestamp with time zone NOT NULL DEFAULT now()
-)
+    updated_at timestamp with time zone NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, role)
+);
 
--- update updated_at column on update
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -26,21 +26,56 @@ BEGIN
    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-CREATE TRIGGER set_updated_at
+
+CREATE TRIGGER set_updated_at_profiles
     BEFORE UPDATE ON app.profiles
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
 
--- Enable RLS and create policies for users table
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "users_select_own"
-    ON public.users FOR SELECT
-    USING (auth.uid() = id);
-CREATE POLICY "users_insert_own"
-    ON public.users FOR INSERT
+CREATE TRIGGER set_updated_at_user_roles
+    BEFORE UPDATE ON app.user_roles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+-- RLS
+-- =============================================================================
+ALTER TABLE app.profiles ENABLE ROW LEVEL SECURITY;
+
+-- User darf eigenes Profil lesen + Admins dürfen Profile ihrer Org-Mitglieder lesen
+CREATE POLICY "profiles_select"
+    ON app.profiles FOR SELECT
+    USING (
+        auth.uid() = id
+        OR EXISTS (
+            SELECT 1 FROM app.user_roles ur
+            WHERE ur.user_id = auth.uid()
+              AND ur.role = 'admin'
+              AND EXISTS (
+                  SELECT 1 FROM admin.organization_members om1
+                  JOIN admin.organization_members om2
+                    ON om1.organization_id = om2.organization_id
+                  WHERE om1.user_id = auth.uid()
+                    AND om2.user_id = app.profiles.id
+              )
+        )
+    );
+
+CREATE POLICY "profiles_insert_own"
+    ON app.profiles FOR INSERT
     WITH CHECK (auth.uid() = id);
-CREATE POLICY "users_update_own"
-    ON public.users FOR UPDATE
+
+CREATE POLICY "profiles_update_own"
+    ON app.profiles FOR UPDATE
     USING (auth.uid() = id)
     WITH CHECK (auth.uid() = id);
--- User delete own is handled via ON DELETE CASCADE -> auth.users
+-- Delete über ON DELETE CASCADE von auth.users
+
+
+-- RLS: app.user_roles
+-- =============================================================================
+ALTER TABLE app.user_roles ENABLE ROW LEVEL SECURITY;
+
+-- User darf eigene Rollen sehen
+CREATE POLICY "user_roles_select_own"
+    ON app.user_roles FOR SELECT
+    USING (auth.uid() = user_id);
