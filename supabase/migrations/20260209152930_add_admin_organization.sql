@@ -3,6 +3,7 @@ CREATE SCHEMA admin;
 CREATE TABLE admin.organizations (
     id uuid NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     name text NOT NULL,
+    created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL DEFAULT auth.uid(),
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     updated_at timestamp with time zone NOT NULL DEFAULT now()
 );
@@ -102,10 +103,22 @@ CREATE POLICY "org_members_select_member"
     ON admin.organization_members FOR SELECT
     USING (admin.is_member_of(organization_id));
 
--- Nur Org-Admins können Mitglieder hinzufügen
-CREATE POLICY "org_members_insert_admin"
+-- Nur Org-Admins können Mitglieder hinzufügen oder der Creater (ursprünglich)
+CREATE POLICY "org_members_insert_admin_or_creator"
     ON admin.organization_members FOR INSERT
-    WITH CHECK (admin.is_admin_of(organization_id));
+    WITH CHECK (
+  admin.is_admin_of(organization_id)
+  OR (
+    user_id = auth.uid()
+    AND user_role = 'admin'
+    AND exists (
+      select 1
+      from admin.organizations o
+      where o.id = organization_id
+        and o.created_by = auth.uid()
+    )
+  )
+);
 
 -- Nur Org-Admins können Mitglieder entfernen
 CREATE POLICY "org_members_delete_admin"
