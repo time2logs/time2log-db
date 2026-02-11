@@ -9,7 +9,6 @@ CREATE TABLE app.activities_assignments (
     updated_at timestamp with time zone NOT NULL DEFAULT now()
 );
 
--- update updated_at column on update
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -23,6 +22,7 @@ CREATE TRIGGER set_updated_at
     EXECUTE FUNCTION public.update_updated_at_column();
 
 -- RLS
+-- =============================================================================
 ALTER TABLE app.activities_assignments ENABLE ROW LEVEL SECURITY;
 
 -- User darf eigene Assignments lesen + Admins dürfen Assignments ihrer Org lesen
@@ -30,13 +30,10 @@ CREATE POLICY "assignments_select"
     ON app.activities_assignments FOR SELECT
     USING (
         user_id = auth.uid()
-        OR (
-            admin.is_admin()
-            AND admin.is_member_of((
-                SELECT organization_id FROM app.pre_defined_activities
-                WHERE id = activity_id
-            ))
-        )
+        OR admin.is_admin_of((
+            SELECT organization_id FROM app.pre_defined_activities
+            WHERE id = activity_id
+        ))
     );
 
 -- User darf eigene Assignments erstellen

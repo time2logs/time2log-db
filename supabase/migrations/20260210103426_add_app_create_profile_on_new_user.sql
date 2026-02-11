@@ -1,6 +1,3 @@
--- Erstellt automatisch ein app.profiles-Profil wenn ein neuer User in auth.users registriert wird
--- first_name und last_name kommen aus auth.users.raw_user_meta_data
-
 CREATE OR REPLACE FUNCTION app.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
