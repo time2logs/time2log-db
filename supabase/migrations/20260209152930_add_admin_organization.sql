@@ -82,10 +82,10 @@ CREATE POLICY "orgs_select_member"
     ON admin.organizations FOR SELECT
     USING (admin.is_member_of(id));
 
--- Admins dürfen neue Organizations erstellen
+-- Alle dürfen neue Organizations erstellen
 CREATE POLICY "orgs_insert_admin"
     ON admin.organizations FOR INSERT
-    WITH CHECK (admin.is_admin());
+    WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Nur Org-Admins dürfen ihre Org bearbeiten
 CREATE POLICY "orgs_update_admin"
