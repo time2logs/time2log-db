@@ -1,5 +1,5 @@
 CREATE TABLE app.activities_assignments (
-    id uuid NOT NULL PRIMARY KEY,
+    id uuid NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     activity_id uuid NOT NULL REFERENCES app.pre_defined_activities(id) ON DELETE CASCADE,
     user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     start_time timestamp with time zone NOT NULL,

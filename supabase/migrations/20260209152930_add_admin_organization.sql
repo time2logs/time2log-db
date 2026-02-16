@@ -78,10 +78,10 @@ CREATE TRIGGER trg_auto_add_creator
 -- ===========================================================================
 ALTER TABLE admin.organizations ENABLE ROW LEVEL SECURITY;
 
--- Alle Mitglieder dürfen ihre Orgs sehen
+-- Alle Mitglieder dürfen ihre Orgs sehen (created_by nötig für RETURNING nach INSERT, da AFTER-Trigger noch nicht gefeuert hat)
 CREATE POLICY "orgs_select_member"
     ON admin.organizations FOR SELECT
-    USING (admin.is_member_of(id));
+    USING (created_by = auth.uid() OR admin.is_member_of(id));
 
 -- Alle dürfen neue Organizations erstellen
 CREATE POLICY "orgs_insert_admin"
@@ -93,6 +93,11 @@ CREATE POLICY "orgs_update_admin"
     ON admin.organizations FOR UPDATE
     USING (admin.is_admin_of(id))
     WITH CHECK (admin.is_admin_of(id));
+
+-- Nur Org-Admins dürfen ihre Org löschen
+CREATE POLICY "orgs_delete_admin"
+    ON admin.organizations FOR DELETE
+    USING (admin.is_admin_of(id));
 
 -- RLS: admin.organization_members
 -- ============================================================================

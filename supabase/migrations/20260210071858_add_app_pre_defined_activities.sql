@@ -1,5 +1,5 @@
 CREATE TABLE app.pre_defined_activities (
-    id uuid NOT NULL PRIMARY KEY,
+    id uuid NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id uuid NOT NULL REFERENCES admin.organizations(id) ON DELETE CASCADE,
     key text NOT NULL,
     label text NOT NULL,
@@ -22,6 +22,9 @@ CREATE TRIGGER set_updated_at
     BEFORE UPDATE ON app.pre_defined_activities
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
+
+create unique index uq_predef_act_org_key
+    on app.pre_defined_activities (organization_id, key);
 
 -- RLS
 -- =============================================================================
