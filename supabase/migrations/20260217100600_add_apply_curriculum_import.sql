@@ -69,31 +69,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER
    SET search_path = '';
 
--- Hauptfunktion: Curriculum-Import anwenden
--- ===========================================================================
 -- Aufruf via PostgREST: POST /rest/v1/rpc/apply_curriculum_import { "import_id": "..." }
---
--- Erwartet folgendes JSON-Format in curriculum_imports.payload:
--- {
---   "competencies": [
---     { "code": "A1", "description": "Kann eine Mauer bauen." }
---   ],
---   "nodes": [
---     {
---       "key": "baugrundlagen",
---       "label": "Baugrundlagen",
---       "type": "category",
---       "children": [
---         {
---           "key": "mauer-bauen",
---           "label": "Mauer bauen",
---           "type": "activity",
---           "competencies": ["A1"]
---         }
---       ]
---     }
---   ]
--- }
 CREATE OR REPLACE FUNCTION admin.apply_curriculum_import(import_id uuid)
 RETURNS void AS $$
 DECLARE
@@ -164,7 +140,7 @@ BEGIN
         WHERE id = import_id;
 
     EXCEPTION WHEN OTHERS THEN
-        -- Savepoint wird zurückgerollt, nur der Status-Update bleibt
+        -- Savepoint wird zurückgerollt, nur der Status update bleibt
         UPDATE admin.curriculum_imports
         SET status = 'failed', error = SQLERRM
         WHERE id = import_id;
