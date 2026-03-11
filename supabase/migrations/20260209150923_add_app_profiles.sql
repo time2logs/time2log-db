@@ -8,6 +8,7 @@ CREATE TABLE app.profiles (
     last_name text NOT NULL,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     updated_at timestamp with time zone NOT NULL DEFAULT now(),
+    avatar_url text,
     PRIMARY KEY (id)
 );
 
@@ -41,4 +42,4 @@ CREATE POLICY "profiles_update_own"
     ON app.profiles FOR UPDATE
     USING (auth.uid() = id)
     WITH CHECK (auth.uid() = id);
--- Delete über ON DELETE CASCADE von auth.users
+-- Delete ueber ON DELETE CASCADE von auth.users
