@@ -8,7 +8,6 @@ CREATE TABLE app.profiles (
     last_name text NOT NULL,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     updated_at timestamp with time zone NOT NULL DEFAULT now(),
-    avatar_url text,
     PRIMARY KEY (id)
 );
 
