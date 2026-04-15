@@ -1,8 +1,8 @@
 -- 1. Schema dem PostgREST exponieren
 -- In Supabase Dashboard: Settings > API > Exposed schemas -> "admin" hinzufügen
--- Oder via SQL:
-ALTER ROLE authenticator SET pgrst.db_schemas = 'public, app, admin';
-NOTIFY pgrst, 'reload config';
+-- Using ALTER SYSTEM instead of ALTER ROLE (authenticator is reserved)
+ALTER SYSTEM SET pgrst.db_schemas = 'public, app, admin';
+SELECT pg_reload_conf();
 
 -- 2. USAGE auf dem Schema gewähren
 GRANT USAGE ON SCHEMA admin TO service_role;
