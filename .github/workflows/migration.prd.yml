@@ -17,17 +17,21 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: Push migrations to PRD
+      - name: Pull latest changes and Push migrations to PRD
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF_PRD }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD_PRD }}
         run: |
-          # Try multiple sources for database password
+          # Force pull latest changes
+          git fetch origin main && git reset --hard origin/main
+          
+          # Set database password from environment variable (already set in env block)
           export SUPABASE_DB_PASSWORD="${{ secrets.SUPABASE_DB_PASSWORD_PRD }}"
           if [ -z "$SUPABASE_DB_PASSWORD" ]; then
-            echo "Warning: SUPABASE_DB_PASSWORD_PRD not found, trying environment variable..."
-            export SUPABASE_DB_PASSWORD="$SUPABASE_DB_PASSWORD"
+            echo "Error: SUPABASE_DB_PASSWORD_PRD not found"
+            exit 1
           fi
+          
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
-          supabase db push
+          supabase db push -y
