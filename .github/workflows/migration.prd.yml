@@ -21,7 +21,8 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF_PRD }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD_PRD }}
         run: |
+          # Set database password with fallback support
+          export SUPABASE_DB_PASSWORD="${{ secrets.SUPABASE_DB_PASSWORD_PRD }}"
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
           supabase db push
