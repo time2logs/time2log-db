@@ -10,6 +10,7 @@ concurrency:
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - uses: actions/checkout@v4
       - name: Setup Supabase CLI
@@ -20,6 +21,7 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF_PRD }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD_PRD }}
         run: |
           # Try multiple sources for database password
           export SUPABASE_DB_PASSWORD="${{ secrets.SUPABASE_DB_PASSWORD_PRD }}"
