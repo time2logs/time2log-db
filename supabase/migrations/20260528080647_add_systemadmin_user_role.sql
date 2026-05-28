@@ -1,0 +1,1 @@
+ALTER TYPE app.user_role ADD VALUE IF NOT EXISTS 'system_admin';
