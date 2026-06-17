@@ -34,4 +34,4 @@ jobs:
           fi
           
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
-          supabase db push --yes
+          supabase db push --include-all --yes

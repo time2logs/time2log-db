@@ -22,4 +22,4 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF_DEV }}
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
-          supabase db push
+          supabase db push --include-all
