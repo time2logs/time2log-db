@@ -1,34 +1,20 @@
--- Mentor-Rolle: Schritt 2 von 2.
---
--- Mentoren sind Org-Mitglieder mit user_role = 'mentor'. Sie haben KEINE
--- Admin-Rechte (zaehlen nicht in is_admin_of) und sehen nur die Lernenden,
--- die ihnen ueber admin.mentor_learners zugewiesen wurden. Ohne Zuweisung
--- sehen sie niemanden.
---
--- Umsetzung:
---   1. Tabelle admin.mentor_learners (Zuweisung Mentor -> Lernende pro Org)
---   2. Helper internal.can_view_learner / admin.can_view_learner
---   3. Zusaetzliche SELECT-Policies auf activity_records, absences, profiles
---   4. role_rank um 'mentor' ergaenzen
-
--- ===========================================================================
--- 1) Tabelle admin.mentor_learners
--- ===========================================================================
 CREATE TABLE admin.mentor_learners (
-    organization_id uuid NOT NULL REFERENCES admin.organizations(id) ON DELETE CASCADE,
-    mentor_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    learner_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    organization_id uuid NOT NULL,
+    mentor_id uuid NOT NULL,
+    learner_id uuid NOT NULL,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (organization_id, mentor_id, learner_id),
-    CHECK (mentor_id <> learner_id)
+    FOREIGN KEY (mentor_id, organization_id)
+        REFERENCES admin.organization_members (user_id, organization_id) ON DELETE CASCADE,
+    FOREIGN KEY (learner_id, organization_id)
+        REFERENCES admin.organization_members (user_id, organization_id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_mentor_learners_mentor ON admin.mentor_learners (mentor_id);
-CREATE INDEX idx_mentor_learners_learner ON admin.mentor_learners (learner_id);
+CREATE INDEX idx_mentor_learners_learner ON admin.mentor_learners (learner_id, organization_id);
 
 ALTER TABLE admin.mentor_learners ENABLE ROW LEVEL SECURITY;
 
--- Org-Admins sehen alle Zuweisungen ihrer Org, Mentoren nur ihre eigenen
 CREATE POLICY "mentor_learners_select"
     ON admin.mentor_learners FOR SELECT
     TO authenticated
@@ -37,13 +23,25 @@ CREATE POLICY "mentor_learners_select"
         OR mentor_id = auth.uid()
     );
 
--- Nur Org-Admins duerfen Zuweisungen anlegen
 CREATE POLICY "mentor_learners_insert_admin"
     ON admin.mentor_learners FOR INSERT
     TO authenticated
-    WITH CHECK (admin.is_admin_of(organization_id));
+    WITH CHECK (
+        admin.is_admin_of(organization_id)
+        AND EXISTS (
+            SELECT 1 FROM admin.organization_members
+            WHERE organization_id = mentor_learners.organization_id
+              AND user_id = mentor_learners.mentor_id
+              AND user_role = 'mentor'
+        )
+        AND EXISTS (
+            SELECT 1 FROM admin.organization_members
+            WHERE organization_id = mentor_learners.organization_id
+              AND user_id = mentor_learners.learner_id
+              AND user_role = 'user'
+        )
+    );
 
--- Nur Org-Admins duerfen Zuweisungen entfernen
 CREATE POLICY "mentor_learners_delete_admin"
     ON admin.mentor_learners FOR DELETE
     TO authenticated
@@ -51,9 +49,6 @@ CREATE POLICY "mentor_learners_delete_admin"
 
 GRANT SELECT, INSERT, DELETE ON admin.mentor_learners TO authenticated;
 
--- ===========================================================================
--- 2) Helper: darf der aktuelle User die Daten dieses Lernenden sehen?
--- ===========================================================================
 CREATE OR REPLACE FUNCTION internal.can_view_learner(p_org uuid, p_user uuid)
 RETURNS boolean
 LANGUAGE sql
@@ -91,9 +86,6 @@ $$;
 REVOKE EXECUTE ON FUNCTION admin.can_view_learner(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION admin.can_view_learner(uuid, uuid) TO authenticated, service_role;
 
--- ===========================================================================
--- 3) SELECT-Policies fuer Mentoren (werden mit den bestehenden ge-OR-t)
--- ===========================================================================
 CREATE POLICY "activity_records_select_mentor"
     ON app.activity_records FOR SELECT
     TO authenticated
@@ -117,9 +109,6 @@ CREATE POLICY "profiles_select_mentor"
         )
     );
 
--- ===========================================================================
--- 4) Rollen-Hierarchie: system_admin > admin > moderator > mentor > user
--- ===========================================================================
 CREATE OR REPLACE FUNCTION internal.role_rank(r app.user_role)
 RETURNS int
 LANGUAGE sql
